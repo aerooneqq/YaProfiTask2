@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -31,18 +32,26 @@ namespace YaProfiTask2.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateNewNote()
         {
-            using var reader = new StreamReader(Request.Body);
-            string body = await reader.ReadToEndAsync().ConfigureAwait(false);
-            (string title, string content) = JsonConvert.DeserializeObject<NoteDto>(body);
-
-            if (content is null)
+            try
             {
-                return new BadRequestResult();
-            }
+                using var reader = new StreamReader(Request.Body);
+                string body = await reader.ReadToEndAsync().ConfigureAwait(false);
+                (string title, string content) = JsonConvert.DeserializeObject<NoteDto>(body);
 
-            Note newNote = new Note(title, content);
-            notes.Add(newNote);
-            return new OkObjectResult(newNote);
+                if (content is null)
+                {
+                    return new BadRequestResult();
+                }
+
+                Note newNote = new Note(title, content);
+                notes.Add(newNote);
+                return new OkObjectResult(newNote);
+            }
+            catch (Exception ex)
+            {
+                //logging could be here
+                return new StatusCodeResult(500);
+            }
         }
 
         [HttpGet("{id:int}")]
@@ -59,26 +68,34 @@ namespace YaProfiTask2.Controllers
         [HttpPut("{id:int}")]
         public  async Task<IActionResult> UpdateNote(int id)
         {
-            using var reader = new StreamReader(Request.Body);
-            string body = await reader.ReadToEndAsync().ConfigureAwait(false);
-            (string newTitle, string newContent) = JsonConvert.DeserializeObject<NoteDto>(body);
-
-            if (notes.FirstOrDefault(note => note.Id == id) is { } foundNote)
+            try
             {
-                if (newContent is { })
+                using var reader = new StreamReader(Request.Body);
+                string body = await reader.ReadToEndAsync().ConfigureAwait(false);
+                (string newTitle, string newContent) = JsonConvert.DeserializeObject<NoteDto>(body);
+
+                if (notes.FirstOrDefault(note => note.Id == id) is { } foundNote)
                 {
-                    foundNote.Content = newContent;
+                    if (newContent is { })
+                    {
+                        foundNote.Content = newContent;
+                    }
+
+                    if (newTitle is { })
+                    {
+                        foundNote.Title = newTitle;
+                    }
+
+                    return new OkResult();
                 }
 
-                if (newTitle is { })
-                {
-                    foundNote.Title = newTitle;
-                }
-
-                return new OkResult();
+                return new BadRequestResult();
             }
-
-            return new BadRequestResult();
+            catch (Exception ex)
+            {
+                //logging could be here
+                return new StatusCodeResult(500);
+            }
         }
 
         [HttpGet]
